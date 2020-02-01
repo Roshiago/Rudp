@@ -20,4 +20,4 @@ class FactorySegments:
     @staticmethod
     def getSegment(data):
         header = BaseHeader.from_bytes(data)
-        return segment_map[header._controlBits].from_bytes(data)
+        return segment_map[header.ctrlBits].from_bytes(data)

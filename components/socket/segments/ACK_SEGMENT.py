@@ -1,7 +1,15 @@
-from components.socket.segments.BasicSegment import BasicSegment, ControlBits, BaseHeader
+from components.socket.segments.BasicSegment import BasicSegment, ControlBits, BaseHeader, convertFromBytes
 
 # This segment should be with data, when it's possible.
 class ACK(BasicSegment):
+    @staticmethod
+    def getDefault():
+        init_dict = {
+            'header': BaseHeader(ControlBits.ACK),
+            'data': [],
+            'Checksum': None
+        }
+        return ACK(**init_dict)
 
     @staticmethod
     def from_bytes(arr):
@@ -12,28 +20,27 @@ class ACK(BasicSegment):
         seq_num = header[2]
         ack_num = header[3]
 
-
-        checksum = arr[-2:]
+        checksum = convertFromBytes(arr[-2:])
         
-        return {
-            'header': {
-                'flag': flag,
-                'length': length,
-                'seq_num': seq_num,
-                'ack_num': ack_num
-            },
-            'data': None if len(arr) > 6 else arr[4:-2].decode('utf-8'),
-            'checksum': checksum
+        header_dict = {
+            'ctrlBits': flag,
+            'header_len': length,
+            'seq_num': seq_num,
+            'ack_num': ack_num    
         }
 
-    def __init__(self, seq_num, ack_num):
-        BasicSegment.__init__(self)
-        self._header = BaseHeader(ControlBits.ACK, 6, seq_num, ack_num)
-        pass
-        #self.addControlBit(ControlBits.ACK)
-        #self.headerLength(6)
-        #self.sequenceNumber(seq_num)
-        #self.ackNumber(ack_num)
+        init_dict = {
+            'header': BaseHeader(**header_dict),
+            'data': None if length > 6 else arr[4:-2].decode('utf-8'),
+            'Checksum': checksum
+        }
 
-        #self.calc_checksum()    
+        return ACK(**init_dict)
+
+    def __init__(self, **kwargs):
+        BasicSegment.__init__(self)
+        self.__dict__.update(kwargs)
+
+    def __str__(self):
+        return "ACK_SEG: " + str(self.__dict__)
     

@@ -18,16 +18,16 @@ class Server:
         arr = syn_seg.get_bytes_array() # convert to bytes
 
         for pkg in arr:
-            self.socket.send_to(addr[0], addr[1], pkg) # send sync pkg
+            self.socket.send_to(addr, pkg) # send sync pkg
 
-        print(syn_seg.ConnectionIdentifier)
+        print("UUID =", syn_seg.ConnectionIdentifier)
 
         while True:
             data, addr = self.socket.recv_from()
 
             segment = FactorySegments.getSegment(data)
             print(segment)
-            if segment['header']['seq_num'] == 0:
+            if segment.header.seq_num == 0:
                 break
         
         print('Connection complete! New connection:', addr)

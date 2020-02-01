@@ -4,6 +4,13 @@ import crcmod
 
 crc16 = crcmod.mkCrcFun(0x13D65, 0xFFFF, True, 0xFFFF)
 
+def convertFromBytes(byte_data):
+    res = 0
+    for part in byte_data:
+        res = (res << 8) | part
+    
+    return res
+
 class ControlBits(IntEnum):
     SYN  = 0b10000000
     ACK  = 0b01000000
@@ -19,67 +26,61 @@ class BaseHeader:
         return BaseHeader(arr[0], arr[1], arr[2], arr[3])
 
     def __init__(self, ctrlBits = ControlBits.SYN, header_len = 0, seq_num = 0, ack_num = 0):
-        self._controlBits = ctrlBits
-        self._headerLength = header_len
-        self._sequenceNumber = seq_num
-        self._ackNumber = ack_num
+        self.ctrlBits = ctrlBits
+        self.header_len = header_len
+        self.seq_num = seq_num
+        self.ack_num = ack_num
     
+    def __str__(self):
+        return "Header: " + "({},{},{},{})".format(self.ctrlBits, \
+            self.header_len, self.seq_num, self.ack_num)
+
+    def __repr__(self):
+        return str(self)
+
     def addControlBit(self, bit: ControlBits):
-        self._controlBits |= bit
+        self.ctrlBits |= bit
 
     def removeControlBit(self, bit: ControlBits):
-        self._controlBits &= ~bit
+        self.ctrlBits &= ~bit
     
     def resetControlBit(self):
-        self._controlBits = 0
+        self.ctrlBits = 0
 
     def sequenceNumber(self, number):
-        self._sequenceNumber = number
+        self.seq_num = number
     
     def headerLength(self, length):
-        self._headerLength = length
+        self.header_len = length
     
     def ackNumber(self, number):
-        self._ackNumber = number
+        self.ack_num = number
 
     def getHeader(self):
         bytesarray = bytearray()
-        bytesarray.extend(self._controlBits.to_bytes(1, 'big'))
-        bytesarray.extend(self._headerLength.to_bytes(1, 'big'))
-        bytesarray.extend(self._sequenceNumber.to_bytes(1, 'big'))
-        bytesarray.extend(self._ackNumber.to_bytes(1, 'big'))
+        bytesarray.extend(self.ctrlBits.to_bytes(1, 'big'))
+        bytesarray.extend(self.header_len.to_bytes(1, 'big'))
+        bytesarray.extend(self.seq_num.to_bytes(1, 'big'))
+        bytesarray.extend(self.ack_num.to_bytes(1, 'big'))
 
         return bytesarray
     
 
 class BasicSegment:
     def __init__(self):
-        self._header = BaseHeader()
-        self._data = []
+        self.header = BaseHeader()
+        self.data = []
     
-    def setData(self, data: list):
-        self._data = data.copy()
-    # def addControlBit(self, bit: ControlBits):
-    #     self.header.addControlBit(bit)
-    
-    # def removeControlBit(self, bit: ControlBits):
-    #     self.header.removeControlBit(bit)
-    
-    # def resetControlBit(self):
-    #     self.header.resetControlBit()
+    def __str__(self):
+        return str(self.header) + "\n" \
+            + self.data
 
-    # def sequenceNumber(self, number):
-    #     self.header.sequenceNumber(number)
-    
-    # def headerLength(self, length):
-    #     self.header.headerLength(length)
-    
-    # def ackNumber(self, number):
-    #     self.header.ackNumber(number)
+    def setData(self, data: list):
+        self.data = data.copy()
 
     def get_bytes_array(self, max_length_pkg):        
         data_bytes = bytearray()
-        for d in self._data:
+        for d in self.data:
             data_bytes.extend(d.to_bytes())
 
 
@@ -105,12 +106,12 @@ class BasicSegment:
             if index == nums_of_pkg:
                 next_index = 0
             
-            self._header.resetControlBit()
-            self._header.addControlBit(ControlBits.ACK)
-            self._header.headerLength(len_header + 6)
-            self._header.sequenceNumber(next_index)
-            self._header.ackNumber(index)
-            header = self._header #BaseHeader(ControlBits.ACK, len_header + 6, next_index, index)
+            self.header.resetControlBit()
+            self.header.addControlBit(ControlBits.ACK)
+            self.header.headerLength(len_header + 6)
+            self.header.sequenceNumber(next_index)
+            self.header.ackNumber(index)
+            header = self.header #BaseHeader(ControlBits.ACK, len_header + 6, next_index, index)
             index += 1
             
             header_bytes = header.getHeader()

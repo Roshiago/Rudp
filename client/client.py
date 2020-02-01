@@ -9,19 +9,19 @@ class Client:
         self._uuid = None
     
     def connect(self, addr):
-        seg_conn = ACK(0, 0)
+        seg_conn = ACK()
         data = seg_conn.get_bytes_array(128)
         for pkg in data:
-            self._socket.send_to(addr[0], addr[1], pkg)
+            self._socket.send_to(addr, pkg)
         
         while True:
             data, addr = self._socket.recv_from()
             seg = FactorySegments.getSegment(data)
             print(seg)
-            if seg['header']['seq_num'] == 0:
+            if seg.header.seq_num == 0:
                 pkgs = seg_conn.get_bytes_array(128)
                 for pkg in pkgs:
-                    self._socket.send_to(addr[0], addr[1], pkg)
+                    self._socket.send_to(addr, pkg)
                 
                 print("Connection successful! Server:", addr)
                 break

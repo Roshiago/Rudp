@@ -1,6 +1,7 @@
 from enum import IntEnum
 from components.rnd_uuid.uuid_32 import uuid4
-from components.socket.segments.BasicSegment import BasicSegment, BaseHeader, ControlBits, crc16
+from components.socket.segments.BasicSegment import \
+    BasicSegment, BaseHeader, ControlBits, crc16, convertFromBytes
 
 class OptionFlags(IntEnum):
     NOT_USED = 0
@@ -13,67 +14,71 @@ class SYN(BasicSegment):
     def from_bytes(data):
         header = data[0:4] # 4 bytes - header length
 
-        flag = header[0]
+        controlBits = header[0]
         length = header[1]
         seq_num = header[2]
         ack_num = header[3]
 
         version = data[4] >> 4
         MaximumNumberOfOutStandingSegments = data[5]
-        OptionsFlagField = data[5]
-
-        def __convertParts(byte_data):
-            res = 0
-            for part in byte_data:
-                res = (res << 8) | part
-            
-            return res
-
-        MaximumSegmentSize = __convertParts(data[6:8])
-        RetransmissionTimeoutValue = __convertParts(data[8:10])
-        CumulativeAckTimeoutValue = __convertParts(data[10:12])
-        NullSegmentTimeoutValue = __convertParts(data[12:14])
-        TransferStateTimeoutValue = __convertParts(data[14:16])
-
-        MaxRetrans = data[16]
-        MaxCumAck = data[17]
-
-        CI32 = __convertParts(data[18:22])
+        OptionsFlagField = data[6]
+        _ = data[7] # 7 byte skiped! This is Spare
         
+        MaximumSegmentSize = convertFromBytes(data[8:10])
+        RetransmissionTimeoutValue = convertFromBytes(data[10:12])
+        CumulativeAckTimeoutValue = convertFromBytes(data[12:14])
+        NullSegmentTimeoutValue = convertFromBytes(data[14:16])
+        TransferStateTimeoutValue = convertFromBytes(data[16:18])
 
+        MaxRetrans = data[18]
+        MaxCumAck = data[19]
+        MaxOutOfSeq = data[20]
+        MaxAutoReset = data[21]
 
+        CI32 = convertFromBytes(data[22:26])
         
-        checksum = data[-2:]
+        checksum = convertFromBytes(data[-2:])
         
-        return {
-            'header': {
-                'flag': bool(flag),
-                'length': length,
-                'seq_num': seq_num,
-                'ack_num': ack_num
-            },
-            'syn_data': {
-                'version': version,
-                'MaximumNumberOfOutStandingSegments': MaximumNumberOfOutStandingSegments,
-                'OptionsFlagField': bool(OptionsFlagField),
-                'MaximumSegmentSize': MaximumSegmentSize,
-                'RetransmissionTimeoutValue': RetransmissionTimeoutValue,
-                'CumulativeAckTimeoutValue': CumulativeAckTimeoutValue,
-                'NullSegmentTimeoutValue': NullSegmentTimeoutValue,
-                'TransferStateTimeoutValue': TransferStateTimeoutValue,
-                'MaxRetrans': MaxRetrans,
-                'MaxCumAck': MaxCumAck,
-                'CI32': CI32,
-            },
-            'checksum': checksum
+        header_dict = {
+            'ctrlBits': controlBits,
+            'header_len': length,
+            'seq_num': seq_num,
+            'ack_num': ack_num
         }
 
-    def __init__(self, without_uuid = False):
+        init_dict = {
+            'header': BaseHeader(**header_dict),
+        
+            'Version': version,
+            'MaximumNumberOfOutStandingSegments': MaximumNumberOfOutStandingSegments,
+            'OptionsFlagField': OptionsFlagField,
+            'MaximumSegmentSize': MaximumSegmentSize,
+            'RetransmissionTimeoutValue': RetransmissionTimeoutValue,
+            'CumulativeAckTimeoutValue': CumulativeAckTimeoutValue,
+            'NullSegmentTimeoutValue': NullSegmentTimeoutValue,
+            'TransferStateTimeoutValue': TransferStateTimeoutValue,
+            'MaxRetrans': MaxRetrans,
+            'MaxCumAck': MaxCumAck,
+            'MaxOutOfSeq': MaxOutOfSeq,
+            'MaxAutoReset': MaxAutoReset,
+            'ConnectionIdentifier': CI32,
+        
+            'Checksum': checksum
+        }
+
+        return SYN(**init_dict)
+
+    def __init__(self, **kwargs):
         #self.addControlBit(ControlBits.SYN)
-        if not without_uuid:
+        if not kwargs.get('without_uuid'):
             self.ConnectionIdentifier = uuid4.next()
         else: 
             self.ConnectionIdentifier = 0
+        
+        self.__dict__.update(kwargs)
+    
+    def __str__(self):
+        return "SYN_SEG: " + str(self.__dict__)
 
     Version = 1 # version of protocol
 
@@ -122,31 +127,32 @@ class SYN(BasicSegment):
     def get_bytes_array(self):
         header = BaseHeader(ControlBits.SYN, 28, 0, 1)
         bytesarray = bytearray()
-        bytesarray.extend(header.getHeader())
-        bytesarray.extend(self.Version.to_bytes(1, 'big'))
-        bytesarray.extend(self.MaximumNumberOfOutStandingSegments.to_bytes(1, 'big'))
+        bytesarray.extend(header.getHeader()) # 1-4 bytes
+        bytesarray.extend(self.Version.to_bytes(1, 'big')) # 5 byte
+        bytesarray.extend(self.MaximumNumberOfOutStandingSegments.to_bytes(1, 'big')) # 6 byte
 
-        bytesarray.extend(self.OptionsFlagField.to_bytes(1, 'big'))
-        bytesarray.extend((0).to_bytes(1,'big'))
+        bytesarray.extend(self.OptionsFlagField.to_bytes(1, 'big')) # 7 byte
+        bytesarray.extend((0).to_bytes(1,'big')) # spare - 8 byte
 
-        bytesarray.extend(self.MaximumSegmentSize.to_bytes(2, 'big'))
+        bytesarray.extend(self.MaximumSegmentSize.to_bytes(2, 'big')) # 9-10 byte
 
-        bytesarray.extend(self.RetransmissionTimeoutValue.to_bytes(2, 'big'))
+        bytesarray.extend(self.RetransmissionTimeoutValue.to_bytes(2, 'big')) # 11-12 byte
 
-        bytesarray.extend(self.CumulativeAckTimeoutValue.to_bytes(2, 'big'))
+        bytesarray.extend(self.CumulativeAckTimeoutValue.to_bytes(2, 'big')) # 13-14 byte
 
-        bytesarray.extend(self.NullSegmentTimeoutValue.to_bytes(2, 'big'))
+        bytesarray.extend(self.NullSegmentTimeoutValue.to_bytes(2, 'big')) # 15-16 byte
 
-        bytesarray.extend(self.TransferStateTimeoutValue.to_bytes(2, 'big'))
+        bytesarray.extend(self.TransferStateTimeoutValue.to_bytes(2, 'big')) # 17-18 byte
 
-        bytesarray.extend(self.MaxRetrans.to_bytes(1, 'big'))
-        bytesarray.extend(self.MaxCumAck.to_bytes(1, 'big'))
+        bytesarray.extend(self.MaxRetrans.to_bytes(1, 'big')) # 19 byte
+        bytesarray.extend(self.MaxCumAck.to_bytes(1, 'big')) # 20 byte
 
-        bytesarray.extend(self.MaxOutOfSeq.to_bytes(1, 'big'))
+        bytesarray.extend(self.MaxOutOfSeq.to_bytes(1, 'big')) # 21 byte
+        bytesarray.extend(self.MaxAutoReset.to_bytes(1, 'big')) # 22 byte
 
-        bytesarray.extend(self.ConnectionIdentifier.to_bytes(4, 'big'))
+        bytesarray.extend(self.ConnectionIdentifier.to_bytes(4, 'big')) # 23-26 byte
 
-        checksum = crc16(bytesarray)
+        checksum = crc16(bytesarray) # 27-28 byte
 
         bytesarray.extend(checksum.to_bytes(2, 'big'))
 

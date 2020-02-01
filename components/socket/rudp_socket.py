@@ -1,4 +1,5 @@
-from socket import *
+from socket import socket, AF_INET, SOCK_DGRAM
+from components.socket.segments import FactorySegments
 
 class RUDPSocket:
     def __init__(self, ip = "127.0.0.1", port = 25565, pkg_length = 128):
@@ -10,14 +11,22 @@ class RUDPSocket:
     def port(self):
         return self._sockaddr[1]
     
+    def accept(self):
+        data, addr = self.recv_from()
+        pkg = FactorySegments.FactorySegments.getSegment(data)
+        # return addr, uuid
+        pass
+
+    def connect(self, addr):
+        pass
+
     def ip(self):
         return self._sockaddr[0]
 
-    def send_to(self, ip, port, data):
-        sockaddr = (ip, port)
+    def send_to(self, sockaddr, data):
         self._socket.sendto(data, sockaddr)
     
-    def recv_from(self): #, ip, port): # pkg, server_addr
+    def recv_from(self): # pkg, server_addr
         pkg, call_addr = self._socket.recvfrom(self._pkg_length)
         return (pkg, call_addr)
 
