@@ -31,7 +31,7 @@ class ACK(BasicSegment):
 
         init_dict = {
             'header': BaseHeader(**header_dict),
-            'data': None if length > 6 else arr[4:-2].decode('utf-8'),
+            'data': None if length <= 6 else arr[4:-2].decode('utf-8'),
             'Checksum': checksum
         }
 

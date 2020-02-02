@@ -5,7 +5,7 @@ import time
 if __name__ == "__main__":
     server = Server()
 
-    server.accept()
+    server.listen()
 
     server.close()
 

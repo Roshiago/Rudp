@@ -31,6 +31,9 @@ class BaseHeader:
         self.seq_num = seq_num
         self.ack_num = ack_num
     
+    def checkBit(self, bit: ControlBits):
+        return self.ctrlBits & bit
+
     def __str__(self):
         return "Header: " + "({},{},{},{})".format(self.ctrlBits, \
             self.header_len, self.seq_num, self.ack_num)
@@ -81,7 +84,7 @@ class BasicSegment:
     def get_bytes_array(self, max_length_pkg):        
         data_bytes = bytearray()
         for d in self.data:
-            data_bytes.extend(d.to_bytes())
+            data_bytes.extend(d)
 
 
         offset_pkg = len(data_bytes) % max_length_pkg
@@ -90,14 +93,12 @@ class BasicSegment:
         if offset_pkg:
             offset_pkg = max_length_pkg - offset_pkg
 
-        if nums_of_pkg == 1:
-            offset_pkg = max_length_pkg
 
         pkgs = []
         
         index = 1
         next_index = 1
-        for i in range(0, len(data_bytes) + offset_pkg, max_length_pkg):
+        for i in range(0, len(data_bytes) + offset_pkg if nums_of_pkg > 1 else max_length_pkg, max_length_pkg): # HUINYA!!!!
             data = data_bytes[i:i+max_length_pkg]
             len_header = len(data)
             
